@@ -3,16 +3,17 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 
 interface Settings {
-  colA?: string;
-  colB?: string;
+  colA?: string | { id?: string; value?: string };
+  colB?: string | { id?: string; value?: string };
   suffix?: string;
   decimals?: string;
-  title?: string;
 }
 
-function formatNumber(n: number, decimals: number, suffix: string): string {
-  const fixed = n.toFixed(decimals);
-  return suffix ? `${fixed}${suffix}` : fixed;
+// Monday passes board_columns settings as either a string ID or an object {id, value}
+function extractColId(val: Settings["colA"]): string | null {
+  if (!val) return null;
+  if (typeof val === "string") return val || null;
+  return val?.id || val?.value || null;
 }
 
 export default function DivisionWidget() {
@@ -24,7 +25,6 @@ export default function DivisionWidget() {
   const [error, setError] = useState("");
   const isMounted = useRef(true);
 
-  // 1. Init SDK
   useEffect(() => {
     isMounted.current = true;
     import("monday-sdk-js").then((mod) => {
@@ -33,12 +33,8 @@ export default function DivisionWidget() {
 
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
-        const data = res?.data;
-        const id =
-          data?.boardId?.toString() ||
-          data?.boardIds?.[0]?.toString() ||
-          data?.connectedBoards?.[0]?.boardId?.toString() ||
-          null;
+        const d = res?.data;
+        const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
 
@@ -55,35 +51,38 @@ export default function DivisionWidget() {
     return () => { isMounted.current = false; };
   }, []);
 
-  // 2. Fetch and calculate
   const fetchAndCalc = useCallback(async (sdk: any, bid: string, cfg: Settings) => {
-    if (!cfg.colA || !cfg.colB) {
+    const colA = extractColId(cfg.colA);
+    const colB = extractColId(cfg.colB);
+
+    if (!colA || !colB) {
       setPhase("no-settings");
       return;
     }
+
     setPhase("loading");
     try {
-      const colIds = `"${cfg.colA}", "${cfg.colB}"`;
-      const allItems: any[] = [];
+      const colIds = `"${colA}", "${colB}"`;
+      const all: any[] = [];
       let cursor: string | null = null;
 
       do {
-        const query: string = cursor
+        const q: string = cursor
           ? `{ boards(ids:[${bid}]) { items_page(limit:100, cursor:"${cursor}") { cursor items { column_values(ids:[${colIds}]) { id text } } } } }`
           : `{ boards(ids:[${bid}]) { items_page(limit:100) { cursor items { column_values(ids:[${colIds}]) { id text } } } } }`;
-        const res = await sdk.api(query);
-        const page = res?.data?.boards?.[0]?.items_page;
+        const r = await sdk.api(q);
+        const page = r?.data?.boards?.[0]?.items_page;
         if (!page) break;
-        allItems.push(...(page.items || []));
+        all.push(...(page.items || []));
         cursor = page.cursor || null;
       } while (cursor);
 
       let sumA = 0, sumB = 0;
-      allItems.forEach((item) => {
+      all.forEach((item) => {
         (item.column_values || []).forEach((cv: any) => {
           const val = parseFloat(cv.text || "0") || 0;
-          if (cv.id === cfg.colA) sumA += val;
-          if (cv.id === cfg.colB) sumB += val;
+          if (cv.id === colA) sumA += val;
+          if (cv.id === colB) sumB += val;
         });
       });
 
@@ -100,17 +99,21 @@ export default function DivisionWidget() {
 
   const openSettings = () => { if (monday) monday.execute("openSettings"); };
 
-  const decimals = parseInt(settings.decimals || "2", 10);
+  const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = settings.suffix || "";
-  const title = settings.title || "División";
 
-  // ── Renders — identical to Monday number widget ──
+  // Format exactly like Monday native: no thousands separator on the main number
+  const formatted = result !== null
+    ? parseFloat(result.toFixed(decimals)).toFixed(decimals)
+    : null;
+
+  // ── Monday native number widget look ──────────────────
 
   if (phase === "init" || phase === "loading") {
     return (
       <div style={s.root}>
-        <div style={s.spinner} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <div style={s.bigNum} aria-hidden>—</div>
+        <style>{`@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}`}</style>
       </div>
     );
   }
@@ -118,15 +121,17 @@ export default function DivisionWidget() {
   if (phase === "no-settings") {
     return (
       <div style={s.root}>
-        <div style={s.emptyWrap}>
-          <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c3c6d4" strokeWidth="1.5" style={{ marginBottom: 10 }}>
-            <line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" />
-            <circle cx="12" cy="5" r="1" fill="#c3c6d4" /><circle cx="12" cy="19" r="1" fill="#c3c6d4" />
+        <div style={s.emptyIcon}>
+          {/* Monday-style empty state icon */}
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+            <rect x="4" y="16" width="28" height="4" rx="2" fill="#c3c6d4"/>
+            <circle cx="18" cy="10" r="3" fill="#c3c6d4"/>
+            <circle cx="18" cy="26" r="3" fill="#c3c6d4"/>
           </svg>
-          <p style={s.emptyTitle}>Selecciona las columnas</p>
-          <p style={s.emptySub}>Configura el numerador y denominador desde el panel de ajustes.</p>
-          <button style={s.openBtn} onClick={openSettings}>Configurar</button>
         </div>
+        <p style={s.emptyText}>Configura el widget</p>
+        <button style={s.btn} onClick={openSettings}>Ajustes</button>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -134,27 +139,23 @@ export default function DivisionWidget() {
   if (phase === "error") {
     return (
       <div style={s.root}>
-        <p style={{ color: "#e2445c", fontSize: 13, textAlign: "center" }}>⚠ {error}</p>
+        <p style={{ color: "#e2445c", fontSize: 13 }}>⚠ {error}</p>
       </div>
     );
   }
 
-  // Ready — Monday number widget look
   return (
     <div style={s.root}>
-      {/* Title — same as Monday widget header */}
-      <div style={s.widgetTitle}>{title}</div>
-
-      {/* Big number — same size/weight as Monday native */}
-      <div style={s.numberWrap}>
-        <span style={s.bigNumber}>
-          {formatNumber(result ?? 0, decimals, suffix)}
-        </span>
-      </div>
-
-      {/* Subtitle: formula explanation */}
-      <div style={s.formula}>
-        SUM(A) ÷ SUM(B)
+      {/*
+        Monday native number widget:
+        - Number fills most of the widget height
+        - Suffix/unit appended tight to the number
+        - No title (title is in the widget header, not inside)
+        - Font weight 300 (thin) for the number — same as Monday
+      */}
+      <div style={s.numRow}>
+        <span style={s.bigNum}>{formatted}</span>
+        {suffix && <span style={s.suffix}>{suffix}</span>}
       </div>
     </div>
   );
@@ -164,79 +165,53 @@ const s: Record<string, React.CSSProperties> = {
   root: {
     width: "100%",
     height: "100%",
-    minHeight: 120,
+    minHeight: 100,
     display: "flex",
     flexDirection: "column",
     alignItems: "center",
     justifyContent: "center",
-    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
-    padding: "16px 20px",
+    fontFamily: "Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    padding: "8px 12px",
     boxSizing: "border-box",
   },
-  spinner: {
-    width: 28,
-    height: 28,
-    border: "3px solid #e6e9ef",
-    borderTop: "3px solid #0073ea",
-    borderRadius: "50%",
-    animation: "spin 0.8s linear infinite",
-  },
-  emptyWrap: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    textAlign: "center",
-    maxWidth: 220,
-  },
-  emptyTitle: {
-    fontSize: 14,
-    fontWeight: 600,
-    color: "#323338",
-    margin: "0 0 6px",
-  },
-  emptySub: {
-    fontSize: 12,
-    color: "#676879",
-    margin: "0 0 14px",
-    lineHeight: 1.5,
-  },
-  openBtn: {
-    padding: "6px 18px",
-    background: "#0073ea",
-    color: "#fff",
-    border: "none",
-    borderRadius: 6,
-    cursor: "pointer",
-    fontSize: 13,
-    fontWeight: 500,
-  },
-  widgetTitle: {
-    fontSize: 14,
-    fontWeight: 500,
-    color: "#323338",
-    marginBottom: 8,
-    textAlign: "center",
-    width: "100%",
-  },
-  numberWrap: {
+  numRow: {
     display: "flex",
     alignItems: "baseline",
     justifyContent: "center",
-    width: "100%",
+    gap: "0.05em",
   },
-  // Monday's native number widget uses ~60-80px font, weight 300-400
-  bigNumber: {
-    fontSize: "clamp(40px, 8vw, 72px)",
+  // Monday native number: very large, thin weight, dark color
+  bigNum: {
+    fontSize: "clamp(48px, 11vw, 80px)",
     fontWeight: 300,
     color: "#323338",
     letterSpacing: "-0.02em",
-    lineHeight: 1.1,
-    textAlign: "center",
+    lineHeight: 1,
+    fontVariantNumeric: "tabular-nums",
   },
-  formula: {
-    marginTop: 8,
-    fontSize: 11,
-    color: "#c3c6d4",
-    textAlign: "center",
+  suffix: {
+    fontSize: "clamp(24px, 5vw, 40px)",
+    fontWeight: 300,
+    color: "#323338",
+    letterSpacing: "-0.01em",
+    lineHeight: 1,
+    marginLeft: "0.1em",
+  },
+  emptyIcon: {
+    marginBottom: 8,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: "#676879",
+    margin: "0 0 10px",
+  },
+  btn: {
+    padding: "5px 14px",
+    background: "#0073ea",
+    color: "#fff",
+    border: "none",
+    borderRadius: 4,
+    cursor: "pointer",
+    fontSize: 12,
   },
 };
