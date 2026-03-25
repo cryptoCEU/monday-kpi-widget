@@ -1,0 +1,13 @@
+{
+  "name": "KPI Widget — Activum",
+  "description": "Widget que calcula CPL, CVR y evolución mensual directamente desde los datos del tablero",
+  "version": "1.0.0",
+  "features": [
+    {
+      "name": "KPI Widget",
+      "type": "AppFeatureDashboardWidget",
+      "urlPath": "/",
+      "description": "Calcula CPL y CVR como SUM ÷ SUM real, y muestra la evolución por mes"
+    }
+  ]
+}
