@@ -94,7 +94,7 @@ export default function KpiWidget() {
 
         // Paginar todos los items
         do {
-          const query = cursor
+          const query: string = cursor
             ? `{ boards(ids: [${bid}]) { items_page(limit: 100, cursor: "${cursor}") { cursor items { column_values(ids: ["${COL_IMPORTE}","${COL_RESULTADOS}","${COL_CLICS}","${COL_FECHA}"]) { id text } } } } }`
             : `{ boards(ids: [${bid}]) { items_page(limit: 100) { cursor items { column_values(ids: ["${COL_IMPORTE}","${COL_RESULTADOS}","${COL_CLICS}","${COL_FECHA}"]) { id text } } } } }`;
 
