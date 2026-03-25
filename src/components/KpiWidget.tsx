@@ -74,8 +74,7 @@ export default function KpiWidget() {
   // Inicializar Monday SDK
   useEffect(() => {
     import("monday-sdk-js").then((mod) => {
-      const mondaySdk = mod.default();
-      mondaySdk.init();
+      const mondaySdk = (mod.default as any)();
       setMonday(mondaySdk);
 
       mondaySdk.get("context").then((res: any) => {
