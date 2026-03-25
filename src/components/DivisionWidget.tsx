@@ -3,17 +3,30 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 
 interface Settings {
-  colA?: string | { id?: string; value?: string };
-  colB?: string | { id?: string; value?: string };
+  colA?: any;
+  colB?: any;
   suffix?: string;
   decimals?: string;
 }
 
-// Monday passes board_columns settings as either a string ID or an object {id, value}
-function extractColId(val: Settings["colA"]): string | null {
+// Monday passes board_columns as: { "boardId": { "columnId": true } }
+// or sometimes as a plain string, or { id, value }
+function extractColId(val: any): string | null {
   if (!val) return null;
   if (typeof val === "string") return val || null;
-  return val?.id || val?.value || null;
+  // { id: "...", value: "..." }
+  if (val.id) return val.id;
+  if (val.value) return val.value;
+  // { "boardId": { "columnId": true } } — Monday native format
+  for (const boardId of Object.keys(val)) {
+    const cols = val[boardId];
+    if (typeof cols === "object") {
+      for (const colId of Object.keys(cols)) {
+        if (cols[colId] === true) return colId;
+      }
+    }
+  }
+  return null;
 }
 
 export default function DivisionWidget() {
@@ -101,19 +114,13 @@ export default function DivisionWidget() {
 
   const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = settings.suffix || "";
-
-  // Format exactly like Monday native: no thousands separator on the main number
-  const formatted = result !== null
-    ? parseFloat(result.toFixed(decimals)).toFixed(decimals)
-    : null;
-
-  // ── Monday native number widget look ──────────────────
+  const formatted = result !== null ? result.toFixed(decimals) : null;
 
   if (phase === "init" || phase === "loading") {
     return (
       <div style={s.root}>
         <div style={s.bigNum} aria-hidden>—</div>
-        <style>{`@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}`}</style>
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -122,7 +129,6 @@ export default function DivisionWidget() {
     return (
       <div style={s.root}>
         <div style={s.emptyIcon}>
-          {/* Monday-style empty state icon */}
           <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
             <rect x="4" y="16" width="28" height="4" rx="2" fill="#c3c6d4"/>
             <circle cx="18" cy="10" r="3" fill="#c3c6d4"/>
@@ -131,7 +137,6 @@ export default function DivisionWidget() {
         </div>
         <p style={s.emptyText}>Configura el widget</p>
         <button style={s.btn} onClick={openSettings}>Ajustes</button>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
   }
@@ -146,13 +151,6 @@ export default function DivisionWidget() {
 
   return (
     <div style={s.root}>
-      {/*
-        Monday native number widget:
-        - Number fills most of the widget height
-        - Suffix/unit appended tight to the number
-        - No title (title is in the widget header, not inside)
-        - Font weight 300 (thin) for the number — same as Monday
-      */}
       <div style={s.numRow}>
         <span style={s.bigNum}>{formatted}</span>
         {suffix && <span style={s.suffix}>{suffix}</span>}
@@ -163,55 +161,21 @@ export default function DivisionWidget() {
 
 const s: Record<string, React.CSSProperties> = {
   root: {
-    width: "100%",
-    height: "100%",
-    minHeight: 100,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
+    width: "100%", height: "100%", minHeight: 100,
+    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
     fontFamily: "Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    padding: "8px 12px",
-    boxSizing: "border-box",
+    padding: "8px 12px", boxSizing: "border-box",
   },
-  numRow: {
-    display: "flex",
-    alignItems: "baseline",
-    justifyContent: "center",
-    gap: "0.05em",
-  },
-  // Monday native number: very large, thin weight, dark color
+  numRow: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: "0.05em" },
   bigNum: {
-    fontSize: "clamp(48px, 11vw, 80px)",
-    fontWeight: 300,
-    color: "#323338",
-    letterSpacing: "-0.02em",
-    lineHeight: 1,
-    fontVariantNumeric: "tabular-nums",
+    fontSize: "clamp(48px, 11vw, 80px)", fontWeight: 300, color: "#323338",
+    letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" as const,
   },
   suffix: {
-    fontSize: "clamp(24px, 5vw, 40px)",
-    fontWeight: 300,
-    color: "#323338",
-    letterSpacing: "-0.01em",
-    lineHeight: 1,
-    marginLeft: "0.1em",
+    fontSize: "clamp(24px, 5vw, 40px)", fontWeight: 300, color: "#323338",
+    letterSpacing: "-0.01em", lineHeight: 1, marginLeft: "0.1em",
   },
-  emptyIcon: {
-    marginBottom: 8,
-  },
-  emptyText: {
-    fontSize: 13,
-    color: "#676879",
-    margin: "0 0 10px",
-  },
-  btn: {
-    padding: "5px 14px",
-    background: "#0073ea",
-    color: "#fff",
-    border: "none",
-    borderRadius: 4,
-    cursor: "pointer",
-    fontSize: 12,
-  },
+  emptyIcon: { marginBottom: 8 },
+  emptyText: { fontSize: 13, color: "#676879", margin: "0 0 10px" },
+  btn: { padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 },
 };
