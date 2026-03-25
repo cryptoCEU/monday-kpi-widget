@@ -1,41 +1,14 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-
-interface Settings {
-  colA?: any;
-  colB?: any;
-  suffix?: string;
-  decimals?: string;
-}
-
-// Monday passes board_columns as: { "boardId": { "columnId": true } }
-// or sometimes as a plain string, or { id, value }
-function extractColId(val: any): string | null {
-  if (!val) return null;
-  if (typeof val === "string") return val || null;
-  // { id: "...", value: "..." }
-  if (val.id) return val.id;
-  if (val.value) return val.value;
-  // { "boardId": { "columnId": true } } — Monday native format
-  for (const boardId of Object.keys(val)) {
-    const cols = val[boardId];
-    if (typeof cols === "object") {
-      for (const colId of Object.keys(cols)) {
-        if (cols[colId] === true) return colId;
-      }
-    }
-  }
-  return null;
-}
+import { useEffect, useState, useRef } from "react";
 
 export default function DivisionWidget() {
   const [monday, setMonday] = useState<any>(null);
   const [boardId, setBoardId] = useState<string | null>(null);
-  const [settings, setSettings] = useState<Settings>({});
+  const [settings, setSettings] = useState<any>({});
   const [result, setResult] = useState<number | null>(null);
-  const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
-  const [error, setError] = useState("");
+  const [phase, setPhase] = useState<"init" | "loading" | "ready" | "error">("init");
+  const [debug, setDebug] = useState<string>("");
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -49,133 +22,39 @@ export default function DivisionWidget() {
         const d = res?.data;
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
+        setDebug(prev => prev + "\nCONTEXT boardId: " + id);
       });
 
       sdk.get("settings").then((res: any) => {
         if (!isMounted.current) return;
-        setSettings(res?.data || {});
+        const s = res?.data || {};
+        setSettings(s);
+        setDebug(prev => prev + "\nSETTINGS: " + JSON.stringify(s, null, 2));
       });
 
       sdk.listen("settings", (res: any) => {
         if (!isMounted.current) return;
-        setSettings(res?.data || {});
+        const s = res?.data || {};
+        setSettings(s);
+        setDebug(prev => prev + "\nSETTINGS UPDATE: " + JSON.stringify(s, null, 2));
       });
     });
     return () => { isMounted.current = false; };
   }, []);
 
-  const fetchAndCalc = useCallback(async (sdk: any, bid: string, cfg: Settings) => {
-    const colA = extractColId(cfg.colA);
-    const colB = extractColId(cfg.colB);
-
-    if (!colA || !colB) {
-      setPhase("no-settings");
-      return;
-    }
-
-    setPhase("loading");
-    try {
-      const colIds = `"${colA}", "${colB}"`;
-      const all: any[] = [];
-      let cursor: string | null = null;
-
-      do {
-        const q: string = cursor
-          ? `{ boards(ids:[${bid}]) { items_page(limit:100, cursor:"${cursor}") { cursor items { column_values(ids:[${colIds}]) { id text } } } } }`
-          : `{ boards(ids:[${bid}]) { items_page(limit:100) { cursor items { column_values(ids:[${colIds}]) { id text } } } } }`;
-        const r = await sdk.api(q);
-        const page = r?.data?.boards?.[0]?.items_page;
-        if (!page) break;
-        all.push(...(page.items || []));
-        cursor = page.cursor || null;
-      } while (cursor);
-
-      let sumA = 0, sumB = 0;
-      all.forEach((item) => {
-        (item.column_values || []).forEach((cv: any) => {
-          const val = parseFloat(cv.text || "0") || 0;
-          if (cv.id === colA) sumA += val;
-          if (cv.id === colB) sumB += val;
-        });
-      });
-
-      const res = sumB > 0 ? sumA / sumB : 0;
-      if (isMounted.current) { setResult(res); setPhase("ready"); }
-    } catch (e: any) {
-      if (isMounted.current) { setError(e?.message || "Error"); setPhase("error"); }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (monday && boardId) fetchAndCalc(monday, boardId, settings);
-  }, [monday, boardId, settings, fetchAndCalc]);
-
-  const openSettings = () => { if (monday) monday.execute("openSettings"); };
-
-  const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
-  const suffix = settings.suffix || "";
-  const formatted = result !== null ? result.toFixed(decimals) : null;
-
-  if (phase === "init" || phase === "loading") {
-    return (
-      <div style={s.root}>
-        <div style={s.bigNum} aria-hidden>—</div>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
-      </div>
-    );
-  }
-
-  if (phase === "no-settings") {
-    return (
-      <div style={s.root}>
-        <div style={s.emptyIcon}>
-          <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
-            <rect x="4" y="16" width="28" height="4" rx="2" fill="#c3c6d4"/>
-            <circle cx="18" cy="10" r="3" fill="#c3c6d4"/>
-            <circle cx="18" cy="26" r="3" fill="#c3c6d4"/>
-          </svg>
-        </div>
-        <p style={s.emptyText}>Configura el widget</p>
-        <button style={s.btn} onClick={openSettings}>Ajustes</button>
-      </div>
-    );
-  }
-
-  if (phase === "error") {
-    return (
-      <div style={s.root}>
-        <p style={{ color: "#e2445c", fontSize: 13 }}>⚠ {error}</p>
-      </div>
-    );
-  }
-
   return (
-    <div style={s.root}>
-      <div style={s.numRow}>
-        <span style={s.bigNum}>{formatted}</span>
-        {suffix && <span style={s.suffix}>{suffix}</span>}
-      </div>
+    <div style={{
+      fontFamily: "monospace",
+      fontSize: 11,
+      padding: 12,
+      background: "#1a1a2e",
+      color: "#00ff88",
+      whiteSpace: "pre-wrap" as const,
+      wordBreak: "break-all" as const,
+      minHeight: 200,
+      overflow: "auto",
+    }}>
+      {debug || "Esperando datos..."}
     </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  root: {
-    width: "100%", height: "100%", minHeight: 100,
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    fontFamily: "Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    padding: "8px 12px", boxSizing: "border-box",
-  },
-  numRow: { display: "flex", alignItems: "baseline", justifyContent: "center", gap: "0.05em" },
-  bigNum: {
-    fontSize: "clamp(48px, 11vw, 80px)", fontWeight: 300, color: "#323338",
-    letterSpacing: "-0.02em", lineHeight: 1, fontVariantNumeric: "tabular-nums" as const,
-  },
-  suffix: {
-    fontSize: "clamp(24px, 5vw, 40px)", fontWeight: 300, color: "#323338",
-    letterSpacing: "-0.01em", lineHeight: 1, marginLeft: "0.1em",
-  },
-  emptyIcon: { marginBottom: 8 },
-  emptyText: { fontSize: 13, color: "#676879", margin: "0 0 10px" },
-  btn: { padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 },
-};
