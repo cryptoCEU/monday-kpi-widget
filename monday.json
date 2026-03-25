@@ -1,123 +1,53 @@
 {
   "name": "KPI Marketing Digital",
-  "description": "Widgets de KPIs y Funnel para tableros de campaña",
+  "description": "Widgets de KPIs, División y Funnel para tableros de campaña",
   "version": "1.0.0",
   "features": [
     {
       "name": "KPI Widget",
       "type": "AppFeatureDashboardWidget",
       "urlPath": "/",
-      "description": "CPL, CVR y evolución mensual calculados como totales reales",
       "settings": {
         "fields": [
-          {
-            "name": "colImporte",
-            "title": "Columna — Importe gastado",
-            "description": "Columna numérica con el importe gastado",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "colResultados",
-            "title": "Columna — Leads / Resultados",
-            "description": "Columna numérica con el número de leads",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "colClics",
-            "title": "Columna — Clics",
-            "description": "Columna numérica con el número de clics",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "colFecha",
-            "title": "Columna — Fecha",
-            "description": "Columna de fecha para la evolución mensual",
-            "type": "board_columns",
-            "columns_filter": ["date"]
-          }
+          { "name": "colImporte", "title": "Columna — Importe gastado", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "colResultados", "title": "Columna — Leads / Resultados", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "colClics", "title": "Columna — Clics", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "colFecha", "title": "Columna — Fecha", "type": "board_columns", "columns_filter": ["date"] }
         ]
       }
     },
     {
-      "name": "Funnel Widget",
+      "name": "División de columnas",
       "type": "AppFeatureDashboardWidget",
-      "urlPath": "/funnel",
-      "description": "Funnel de conversión configurable con cualquier columna numérica",
+      "urlPath": "/division",
       "settings": {
         "fields": [
-          {
-            "name": "step1_col",
-            "title": "Paso 1 — Columna",
-            "description": "Primera etapa del funnel (ej: Impresiones)",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "step1_label",
-            "title": "Paso 1 — Etiqueta",
-            "description": "Nombre que aparecerá en el funnel",
-            "type": "text"
-          },
-          {
-            "name": "step2_col",
-            "title": "Paso 2 — Columna",
-            "description": "Segunda etapa del funnel (ej: Clics)",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "step2_label",
-            "title": "Paso 2 — Etiqueta",
-            "type": "text"
-          },
-          {
-            "name": "step3_col",
-            "title": "Paso 3 — Columna",
-            "description": "Tercera etapa del funnel (ej: Leads)",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "step3_label",
-            "title": "Paso 3 — Etiqueta",
-            "type": "text"
-          },
-          {
-            "name": "step4_col",
-            "title": "Paso 4 — Columna (opcional)",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "step4_label",
-            "title": "Paso 4 — Etiqueta",
-            "type": "text"
-          },
-          {
-            "name": "step5_col",
-            "title": "Paso 5 — Columna (opcional)",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "step5_label",
-            "title": "Paso 5 — Etiqueta",
-            "type": "text"
-          },
-          {
-            "name": "step6_col",
-            "title": "Paso 6 — Columna (opcional)",
-            "type": "board_columns",
-            "columns_filter": ["numeric"]
-          },
-          {
-            "name": "step6_label",
-            "title": "Paso 6 — Etiqueta",
-            "type": "text"
-          }
+          { "name": "title", "title": "Título del widget", "type": "text", "default": "CPL" },
+          { "name": "colA", "title": "Numerador", "description": "Columna cuya suma va arriba. Ej: Importe gastado", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "colB", "title": "Denominador", "description": "Columna cuya suma va abajo. Ej: Resultados", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "suffix", "title": "Sufijo (€, %, pts...)", "type": "text", "default": "€" },
+          { "name": "decimals", "title": "Decimales", "type": "dropdown", "options": [{ "label": "0", "value": "0" }, { "label": "1", "value": "1" }, { "label": "2", "value": "2" }, { "label": "3", "value": "3" }], "default": "2" }
+        ]
+      }
+    },
+    {
+      "name": "Funnel de conversión",
+      "type": "AppFeatureDashboardWidget",
+      "urlPath": "/funnel",
+      "settings": {
+        "fields": [
+          { "name": "step1_col", "title": "Paso 1 — Columna", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "step1_label", "title": "Paso 1 — Etiqueta", "type": "text", "default": "Impresiones" },
+          { "name": "step2_col", "title": "Paso 2 — Columna", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "step2_label", "title": "Paso 2 — Etiqueta", "type": "text", "default": "Clics" },
+          { "name": "step3_col", "title": "Paso 3 — Columna", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "step3_label", "title": "Paso 3 — Etiqueta", "type": "text", "default": "Leads" },
+          { "name": "step4_col", "title": "Paso 4 — Columna (opcional)", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "step4_label", "title": "Paso 4 — Etiqueta", "type": "text", "default": "" },
+          { "name": "step5_col", "title": "Paso 5 — Columna (opcional)", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "step5_label", "title": "Paso 5 — Etiqueta", "type": "text", "default": "" },
+          { "name": "step6_col", "title": "Paso 6 — Columna (opcional)", "type": "board_columns", "columns_filter": ["numeric"] },
+          { "name": "step6_label", "title": "Paso 6 — Etiqueta", "type": "text", "default": "" }
         ]
       }
     }
