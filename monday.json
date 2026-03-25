@@ -1,13 +1,51 @@
 {
-  "name": "KPI Widget — Activum",
-  "description": "Widget que calcula CPL, CVR y evolución mensual directamente desde los datos del tablero",
+  "name": "KPI Marketing Digital",
+  "description": "Widgets de KPIs y Funnel para tableros de campaña",
   "version": "1.0.0",
   "features": [
     {
       "name": "KPI Widget",
       "type": "AppFeatureDashboardWidget",
       "urlPath": "/",
-      "description": "Calcula CPL y CVR como SUM ÷ SUM real, y muestra la evolución por mes"
+      "description": "CPL, CVR y evolución mensual calculados como totales reales",
+      "settings": {
+        "fields": [
+          {
+            "name": "colImporte",
+            "title": "Columna — Importe gastado",
+            "description": "Columna numérica con el importe gastado",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "colResultados",
+            "title": "Columna — Leads / Resultados",
+            "description": "Columna numérica con el número de leads",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "colClics",
+            "title": "Columna — Clics",
+            "description": "Columna numérica con el número de clics",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "colFecha",
+            "title": "Columna — Fecha",
+            "description": "Columna de fecha para la evolución mensual",
+            "type": "board_columns",
+            "columns_filter": ["date"]
+          }
+        ]
+      }
+    },
+    {
+      "name": "Funnel Widget",
+      "type": "AppFeatureDashboardWidget",
+      "urlPath": "/funnel",
+      "description": "Funnel de conversión configurable"
     }
   ]
 }
