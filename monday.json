@@ -45,7 +45,81 @@
       "name": "Funnel Widget",
       "type": "AppFeatureDashboardWidget",
       "urlPath": "/funnel",
-      "description": "Funnel de conversión configurable"
+      "description": "Funnel de conversión configurable con cualquier columna numérica",
+      "settings": {
+        "fields": [
+          {
+            "name": "step1_col",
+            "title": "Paso 1 — Columna",
+            "description": "Primera etapa del funnel (ej: Impresiones)",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "step1_label",
+            "title": "Paso 1 — Etiqueta",
+            "description": "Nombre que aparecerá en el funnel",
+            "type": "text"
+          },
+          {
+            "name": "step2_col",
+            "title": "Paso 2 — Columna",
+            "description": "Segunda etapa del funnel (ej: Clics)",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "step2_label",
+            "title": "Paso 2 — Etiqueta",
+            "type": "text"
+          },
+          {
+            "name": "step3_col",
+            "title": "Paso 3 — Columna",
+            "description": "Tercera etapa del funnel (ej: Leads)",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "step3_label",
+            "title": "Paso 3 — Etiqueta",
+            "type": "text"
+          },
+          {
+            "name": "step4_col",
+            "title": "Paso 4 — Columna (opcional)",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "step4_label",
+            "title": "Paso 4 — Etiqueta",
+            "type": "text"
+          },
+          {
+            "name": "step5_col",
+            "title": "Paso 5 — Columna (opcional)",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "step5_label",
+            "title": "Paso 5 — Etiqueta",
+            "type": "text"
+          },
+          {
+            "name": "step6_col",
+            "title": "Paso 6 — Columna (opcional)",
+            "type": "board_columns",
+            "columns_filter": ["numeric"]
+          },
+          {
+            "name": "step6_label",
+            "title": "Paso 6 — Etiqueta",
+            "type": "text"
+          }
+        ]
+      }
     }
   ]
 }
