@@ -18,10 +18,8 @@ interface FunnelStep {
   pctOfPrev: number;
 }
 
-// Same blue palette as Monday native funnel
 const BAR_COLOR = "#4d90fe";
 const BAR_COLOR_DIM = "#2d5fa8";
-const ARROW_COLOR = "#4d90fe";
 
 function extractColId(val: any): string | null {
   if (!val) return null;
@@ -62,7 +60,6 @@ export default function FunnelWidget() {
     import("monday-sdk-js").then((mod) => {
       const sdk = (mod.default as any)();
       setMonday(sdk);
-
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
@@ -71,22 +68,13 @@ export default function FunnelWidget() {
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
-
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
         const t = res?.data?.theme || "dark";
         setIsDark(t === "dark" || t === "black");
       });
-
-      sdk.get("settings").then((res: any) => {
-        if (!isMounted.current) return;
-        setSettings(res?.data || {});
-      });
-
-      sdk.listen("settings", (res: any) => {
-        if (!isMounted.current) return;
-        setSettings(res?.data || {});
-      });
+      sdk.get("settings").then((res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
+      sdk.listen("settings", (res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
     });
     return () => { isMounted.current = false; };
   }, []);
@@ -164,7 +152,7 @@ export default function FunnelWidget() {
 
   if (phase === "no-settings" || phase === "error") {
     return (
-      <div style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center", fontFamily: FONT }}>
+      <div style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" as const, fontFamily: FONT }}>
         <svg width="52" height="44" viewBox="0 0 52 44" style={{ marginBottom: 12, opacity: 0.4 }}>
           <rect x="0" y="0" width="10" height="44" rx="2" fill={BAR_COLOR}/>
           <rect x="14" y="8" width="10" height="36" rx="2" fill={BAR_COLOR}/>
@@ -191,17 +179,17 @@ export default function FunnelWidget() {
   const totalConversion = firstVal > 0 ? (lastVal / firstVal) * 100 : 0;
 
   return (
-    <div style={{ background: bg, width: "100%", height: "100%", fontFamily: FONT, padding: "16px 12px 12px", boxSizing: "border-box" }}>
+    <div style={{ background: bg, width: "100%", height: "100%", fontFamily: FONT, padding: "16px 12px 12px", boxSizing: "border-box" as const }}>
       {/* Chart area */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: CHART_H, marginBottom: 8, position: "relative" }}>
+      <div style={{ display: "flex", alignItems: "flex-end", height: CHART_H, marginBottom: 8, position: "relative" as const }}>
         {/* Y axis grid lines */}
         {[0, 0.33, 0.66, 1].map((pct, i) => (
           <div key={i} style={{
-            position: "absolute",
+            position: "absolute" as const,
             left: 0, right: 0,
             bottom: pct * CHART_H,
             borderTop: `1px solid ${gridLine}`,
-            pointerEvents: "none",
+            pointerEvents: "none" as const,
           }} />
         ))}
 
@@ -212,20 +200,18 @@ export default function FunnelWidget() {
           const nextStep = steps[i + 1];
 
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-end", flex: 1, position: "relative", height: "100%" }}>
-              {/* Bar group */}
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%", paddingRight: isLast ? 0 : 2 }}>
+            <div key={i} style={{ display: "flex", alignItems: "flex-end", flex: 1, position: "relative" as const, height: "100%" }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "flex-end", height: "100%", paddingRight: isLast ? 0 : 2 }}>
                 {/* Value on top */}
                 <span style={{ fontSize: 11, fontWeight: 600, color: textPrimary, marginBottom: 4, whiteSpace: "nowrap" as const }}>
                   {fmtNum(step.value)}
                 </span>
-
-                {/* % of previous (shown between bars) */}
+                {/* % of previous */}
                 {i > 0 && (
                   <span style={{
-                    position: "absolute",
-                    top: CHART_H - barH - 22,
-                    left: -18,
+                    position: "absolute" as const,
+                    top: CHART_H - barH - 20,
+                    left: -14,
                     fontSize: 10,
                     color: textMuted,
                     whiteSpace: "nowrap" as const,
@@ -234,15 +220,12 @@ export default function FunnelWidget() {
                     {fmtPct(step.pctOfPrev)}
                   </span>
                 )}
-
                 {/* Bar */}
                 <div style={{
                   width: "100%",
                   height: barH,
                   background: `linear-gradient(to bottom, ${BAR_COLOR}, ${BAR_COLOR_DIM})`,
                   borderRadius: "3px 3px 0 0",
-                  position: "relative",
-                  transition: "height 0.5s ease",
                 }} />
               </div>
 
@@ -251,49 +234,29 @@ export default function FunnelWidget() {
                 <div style={{
                   width: 16,
                   display: "flex",
-                  flexDirection: "column",
+                  flexDirection: "column" as const,
                   alignItems: "center",
                   justifyContent: "flex-end",
                   height: "100%",
                   paddingBottom: Math.max((nextStep.value / maxVal) * CHART_H, 4) / 2,
                   flexShrink: 0,
-                  zIndex: 1,
                 }}>
                   <svg width="12" height="12" viewBox="0 0 12 12">
-                    <path d="M2 4 L6 8 L10 4" stroke={ARROW_COLOR} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 4 L6 8 L10 4" stroke={BAR_COLOR} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               )}
             </div>
           );
         })}
-
-        {/* Total conversion — right side like Monday */}
-        <div style={{
-          position: "absolute",
-          right: -4,
-          top: "50%",
-          transform: "translateY(-50%)",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          gap: 4,
-          pointerEvents: "none",
-          paddingLeft: 8,
-        }}>
-          <svg width="14" height: 40" viewBox="0 0 14 40" style={{ flexShrink: 0 }}>
-            <path d="M7 0 L7 40" stroke={BAR_COLOR} strokeWidth="1.5" strokeDasharray="3 3"/>
-            <path d="M3 36 L7 40 L11 36" fill={BAR_COLOR}/>
-          </svg>
-        </div>
       </div>
 
       {/* X axis labels */}
-      <div style={{ display: "flex", gap: 0, marginBottom: 12 }}>
+      <div style={{ display: "flex", marginBottom: 12 }}>
         {steps.map((step, i) => (
           <div key={i} style={{
             flex: 1,
-            textAlign: "center",
+            textAlign: "center" as const,
             fontSize: 11,
             color: textMuted,
             overflow: "hidden",
@@ -309,15 +272,12 @@ export default function FunnelWidget() {
       {/* Divider */}
       <div style={{ height: "0.5px", background: gridLine, marginBottom: 10 }} />
 
-      {/* Bottom: total conversion + step details */}
+      {/* Footer */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 8 }}>
-        {/* Total conversion */}
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
           <span style={{ fontSize: 11, color: textMuted }}>Conversión total:</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#00c875" }}>{fmtPct(totalConversion)}</span>
         </div>
-
-        {/* Step pills */}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
           {steps.map((step, i) => (
             <div key={i} style={{
