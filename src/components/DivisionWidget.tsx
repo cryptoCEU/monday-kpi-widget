@@ -10,13 +10,11 @@ interface Settings {
   unit?: any;
 }
 
-// Monday passes board_columns as: { "boardId": ["columnId"] }
 function extractColId(val: any): string | null {
   if (!val) return null;
   if (typeof val === "string") return val || null;
   if (val.id) return val.id;
   if (val.value) return val.value;
-  // { "boardId": ["colId", ...] }
   for (const boardId of Object.keys(val)) {
     const cols = val[boardId];
     if (Array.isArray(cols) && cols.length > 0) return cols[0];
@@ -29,7 +27,6 @@ function extractColId(val: any): string | null {
   return null;
 }
 
-// Monday unit field: { symbol, direction, custom_unit }
 function extractSuffix(settings: Settings): string {
   if (settings.suffix) return settings.suffix;
   if (settings.unit && typeof settings.unit === "object") {
@@ -44,6 +41,7 @@ export default function DivisionWidget() {
   const [settings, setSettings] = useState<Settings>({});
   const [result, setResult] = useState<number | null>(null);
   const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
+  const [theme, setTheme] = useState<"light" | "dark" | "black">("light");
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -55,8 +53,18 @@ export default function DivisionWidget() {
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
+        // theme: "light" | "dark" | "black" | "hacker"
+        const t = d?.theme || "light";
+        setTheme(t as any);
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
+      });
+
+      // Listen for theme changes
+      sdk.listen("context", (res: any) => {
+        if (!isMounted.current) return;
+        const t = res?.data?.theme || "light";
+        setTheme(t as any);
       });
 
       sdk.get("settings").then((res: any) => {
@@ -75,7 +83,6 @@ export default function DivisionWidget() {
   const fetchAndCalc = useCallback(async (sdk: any, bid: string, cfg: Settings) => {
     const colA = extractColId(cfg.colA);
     const colB = extractColId(cfg.colB);
-
     if (!colA || !colB) { setPhase("no-settings"); return; }
 
     setPhase("loading");
@@ -83,7 +90,6 @@ export default function DivisionWidget() {
       const colIds = `"${colA}", "${colB}"`;
       const all: any[] = [];
       let cursor: string | null = null;
-
       do {
         const q: string = cursor
           ? `{ boards(ids:[${bid}]) { items_page(limit:100, cursor:"${cursor}") { cursor items { column_values(ids:[${colIds}]) { id text } } } } }`
@@ -106,8 +112,8 @@ export default function DivisionWidget() {
 
       const res = sumB > 0 ? sumA / sumB : 0;
       if (isMounted.current) { setResult(res); setPhase("ready"); }
-    } catch (e: any) {
-      if (isMounted.current) { setPhase("error"); }
+    } catch {
+      if (isMounted.current) setPhase("error");
     }
   }, []);
 
@@ -116,62 +122,106 @@ export default function DivisionWidget() {
   }, [monday, boardId, settings, fetchAndCalc]);
 
   const openSettings = () => { if (monday) monday.execute("openSettings"); };
+
   const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = extractSuffix(settings);
   const formatted = result !== null ? result.toFixed(decimals) : null;
 
+  // Monday color tokens per theme
+  const isDark = theme === "dark" || theme === "black";
+  const colors = {
+    // Number color — Monday uses near-white on dark, near-black on light
+    number: isDark ? "#d5d8df" : "#323338",
+    // Background — transparent so Monday's bg shows through
+    bg: "transparent",
+    // Empty state text
+    muted: isDark ? "#6b6f7d" : "#676879",
+    // Button
+    btnBg: "#0073ea",
+    btnText: "#ffffff",
+  };
+
+  const rootStyle: React.CSSProperties = {
+    width: "100%",
+    height: "100%",
+    minHeight: 100,
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "center",
+    // Monday's number widget font stack
+    fontFamily: "Roboto, Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+    background: colors.bg,
+    padding: "8px 12px",
+    boxSizing: "border-box",
+  };
+
   if (phase === "init" || phase === "loading") {
     return (
-      <div style={s.root}>
-        <span style={{ ...s.bigNum, opacity: 0.2 }}>—</span>
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+      <div style={rootStyle}>
+        <span style={{
+          fontSize: "clamp(48px, 11vw, 80px)",
+          fontWeight: 300,
+          color: colors.number,
+          opacity: 0.25,
+          letterSpacing: "-0.02em",
+          lineHeight: 1,
+        }}>—</span>
       </div>
     );
   }
 
   if (phase === "no-settings") {
     return (
-      <div style={s.root}>
-        <p style={s.emptyText}>Configura el widget</p>
-        <button style={s.btn} onClick={openSettings}>Ajustes</button>
+      <div style={rootStyle}>
+        <p style={{ fontSize: 13, color: colors.muted, margin: "0 0 10px", textAlign: "center" }}>
+          Configura el widget
+        </p>
+        <button
+          onClick={openSettings}
+          style={{ padding: "5px 14px", background: colors.btnBg, color: colors.btnText, border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
+        >
+          Ajustes
+        </button>
       </div>
     );
   }
 
   if (phase === "error") {
     return (
-      <div style={s.root}>
+      <div style={rootStyle}>
         <p style={{ color: "#e2445c", fontSize: 13 }}>Error al cargar</p>
       </div>
     );
   }
 
   return (
-    <div style={s.root}>
-      <div style={s.numRow}>
-        <span style={s.bigNum}>{formatted}</span>
-        {suffix && <span style={s.suffix}>{suffix}</span>}
+    <div style={rootStyle}>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
+        {/* Monday native number: weight 300, large, color adapts to theme */}
+        <span style={{
+          fontSize: "clamp(48px, 11vw, 80px)",
+          fontWeight: 300,
+          color: colors.number,
+          letterSpacing: "-0.02em",
+          lineHeight: 1,
+          fontVariantNumeric: "tabular-nums",
+        }}>
+          {formatted}
+        </span>
+        {suffix && (
+          <span style={{
+            fontSize: "clamp(24px, 5vw, 40px)",
+            fontWeight: 300,
+            color: colors.number,
+            lineHeight: 1,
+            marginLeft: "0.1em",
+            letterSpacing: "-0.01em",
+          }}>
+            {suffix}
+          </span>
+        )}
       </div>
     </div>
   );
 }
-
-const s: Record<string, React.CSSProperties> = {
-  root: {
-    width: "100%", height: "100%", minHeight: 100,
-    display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-    fontFamily: "Roboto, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    padding: "8px 12px", boxSizing: "border-box",
-  },
-  numRow: { display: "flex", alignItems: "baseline", justifyContent: "center" },
-  bigNum: {
-    fontSize: "clamp(48px, 11vw, 80px)", fontWeight: 300, color: "#323338",
-    letterSpacing: "-0.02em", lineHeight: 1,
-  },
-  suffix: {
-    fontSize: "clamp(24px, 5vw, 40px)", fontWeight: 300, color: "#323338",
-    lineHeight: 1, marginLeft: "0.1em",
-  },
-  emptyText: { fontSize: 13, color: "#676879", margin: "0 0 10px" },
-  btn: { padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 },
-};
