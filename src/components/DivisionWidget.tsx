@@ -41,7 +41,7 @@ export default function DivisionWidget() {
   const [settings, setSettings] = useState<Settings>({});
   const [result, setResult] = useState<number | null>(null);
   const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
-  const [theme, setTheme] = useState<"light" | "dark" | "black">("light");
+  const [isDark, setIsDark] = useState(false);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -53,18 +53,16 @@ export default function DivisionWidget() {
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
-        // theme: "light" | "dark" | "black" | "hacker"
         const t = d?.theme || "light";
-        setTheme(t as any);
+        setIsDark(t === "dark" || t === "black");
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
 
-      // Listen for theme changes
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
         const t = res?.data?.theme || "light";
-        setTheme(t as any);
+        setIsDark(t === "dark" || t === "black");
       });
 
       sdk.get("settings").then((res: any) => {
@@ -127,60 +125,46 @@ export default function DivisionWidget() {
   const suffix = extractSuffix(settings);
   const formatted = result !== null ? result.toFixed(decimals) : null;
 
-  // Monday color tokens per theme
-  const isDark = theme === "dark" || theme === "black";
-  const colors = {
-    // Number color — Monday uses near-white on dark, near-black on light
-    number: isDark ? "#d5d8df" : "#323338",
-    // Background — transparent so Monday's bg shows through
-    bg: "transparent",
-    // Empty state text
-    muted: isDark ? "#6b6f7d" : "#676879",
-    // Button
-    btnBg: "#0073ea",
-    btnText: "#ffffff",
+  // Monday color tokens — Figtree weight 300 on dark bg is #d5d8df, on light is #323338
+  const color = isDark ? "#d5d8df" : "#323338";
+  const muted = isDark ? "#6b6f7d" : "#676879";
+
+  const FONT = "'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+  const numStyle: React.CSSProperties = {
+    fontFamily: FONT,
+    fontSize: "clamp(40px, 10vw, 72px)",
+    fontWeight: 300,
+    color,
+    letterSpacing: "-0.02em",
+    lineHeight: 1,
+    fontVariantNumeric: "tabular-nums",
   };
 
-  const rootStyle: React.CSSProperties = {
-    width: "100%",
-    height: "100%",
-    minHeight: 100,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "center",
-    // Monday's number widget font stack
-    fontFamily: "Roboto, Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    background: colors.bg,
-    padding: "8px 12px",
-    boxSizing: "border-box",
+  const root: React.CSSProperties = {
+    width: "100%", height: "100%", minHeight: 100,
+    display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center",
+    fontFamily: FONT,
+    background: "transparent",
+    padding: "8px 12px", boxSizing: "border-box",
   };
 
   if (phase === "init" || phase === "loading") {
     return (
-      <div style={rootStyle}>
-        <span style={{
-          fontSize: "clamp(48px, 11vw, 80px)",
-          fontWeight: 300,
-          color: colors.number,
-          opacity: 0.25,
-          letterSpacing: "-0.02em",
-          lineHeight: 1,
-        }}>—</span>
+      <div style={root}>
+        <span style={{ ...numStyle, opacity: 0.2 }}>—</span>
       </div>
     );
   }
 
   if (phase === "no-settings") {
     return (
-      <div style={rootStyle}>
-        <p style={{ fontSize: 13, color: colors.muted, margin: "0 0 10px", textAlign: "center" }}>
+      <div style={root}>
+        <p style={{ fontFamily: FONT, fontSize: 13, color: muted, margin: "0 0 10px", textAlign: "center" }}>
           Configura el widget
         </p>
-        <button
-          onClick={openSettings}
-          style={{ padding: "5px 14px", background: colors.btnBg, color: colors.btnText, border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}
-        >
+        <button onClick={openSettings} style={{ fontFamily: FONT, padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}>
           Ajustes
         </button>
       </div>
@@ -188,39 +172,14 @@ export default function DivisionWidget() {
   }
 
   if (phase === "error") {
-    return (
-      <div style={rootStyle}>
-        <p style={{ color: "#e2445c", fontSize: 13 }}>Error al cargar</p>
-      </div>
-    );
+    return <div style={root}><p style={{ fontFamily: FONT, color: "#e2445c", fontSize: 13 }}>Error al cargar</p></div>;
   }
 
   return (
-    <div style={rootStyle}>
+    <div style={root}>
       <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
-        {/* Monday native number: weight 300, large, color adapts to theme */}
-        <span style={{
-          fontSize: "clamp(48px, 11vw, 80px)",
-          fontWeight: 300,
-          color: colors.number,
-          letterSpacing: "-0.02em",
-          lineHeight: 1,
-          fontVariantNumeric: "tabular-nums",
-        }}>
-          {formatted}
-        </span>
-        {suffix && (
-          <span style={{
-            fontSize: "clamp(24px, 5vw, 40px)",
-            fontWeight: 300,
-            color: colors.number,
-            lineHeight: 1,
-            marginLeft: "0.1em",
-            letterSpacing: "-0.01em",
-          }}>
-            {suffix}
-          </span>
-        )}
+        <span style={numStyle}>{formatted}</span>
+        {suffix && <span style={numStyle}>{suffix}</span>}
       </div>
     </div>
   );
