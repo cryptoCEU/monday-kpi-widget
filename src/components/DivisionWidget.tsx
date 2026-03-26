@@ -123,7 +123,9 @@ export default function DivisionWidget() {
 
   const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = extractSuffix(settings);
-  const formatted = result !== null ? result.toFixed(decimals) : null;
+  const multiplyBy100 = settings.multiplyBy100 === true || settings.multiplyBy100 === "true";
+  const displayValue = result !== null ? (multiplyBy100 ? result * 100 : result) : null;
+  const formatted = displayValue !== null ? displayValue.toFixed(decimals) : null;
 
   // Monday color tokens — Figtree weight 300 on dark bg is #d5d8df, on light is #323338
   const color = isDark ? "#d5d8df" : "#323338";
