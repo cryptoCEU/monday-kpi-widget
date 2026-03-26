@@ -123,7 +123,7 @@ export default function DivisionWidget() {
 
   const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = extractSuffix(settings);
-  const multiplyBy100 = settings.multiplyBy100 === true || settings.multiplyBy100 === "true";
+  const multiplyBy100 = settings.multiplyBy100 === true || settings.multiplyBy100 === "true" || settings.multiplyBy100 === 1 || settings.multiplyBy100 === "1" || (typeof settings.multiplyBy100 === "object" && settings.multiplyBy100 !== null && Object.values(settings.multiplyBy100).some((v) => v === true || v === "true" || v === 1));
   const displayValue = result !== null ? (multiplyBy100 ? result * 100 : result) : null;
   const formatted = displayValue !== null ? displayValue.toFixed(decimals) : null;
 
@@ -183,6 +183,10 @@ export default function DivisionWidget() {
         <span style={numStyle}>{formatted}</span>
         {suffix && <span style={numStyle}>{suffix}</span>}
       </div>
+      {/* DEBUG — remove after fix */}
+      <p style={{ fontFamily: FONT, fontSize: 9, color: muted, marginTop: 4 }}>
+        x100: {JSON.stringify(settings.multiplyBy100)} → {String(multiplyBy100)}
+      </p>
     </div>
   );
 }
