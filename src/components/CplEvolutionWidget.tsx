@@ -304,7 +304,7 @@ export default function CplEvolutionWidget() {
         ticks: {
           color: textMuted,
           font: { family: FONT, size: 11 },
-          callback: (v) => fmt(v as number),
+          callback: (v: any) => fmt(v as number),
         },
       },
     },
