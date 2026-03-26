@@ -16,9 +16,9 @@ interface FunnelStep {
   value: number;
   pctOfFirst: number;
   pctOfPrev: number;
+  color: string;
 }
 
-// Yellow, Blue, Purple as requested + extras
 const COLORS = ["#ffcb00", "#579bfc", "#a358df", "#00c875", "#e2445c", "#ff642e"];
 
 function extractColId(val: any): string | null {
@@ -53,7 +53,22 @@ export default function FunnelWidget() {
   const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
   const [error, setError] = useState("");
   const [isDark, setIsDark] = useState(true);
+  const [containerW, setContainerW] = useState(500);
+  const containerRef = useRef<HTMLDivElement>(null);
   const isMounted = useRef(true);
+
+  // Measure container width responsively
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        setContainerW(entry.contentRect.width || 500);
+      }
+    });
+    ro.observe(containerRef.current);
+    setContainerW(containerRef.current.offsetWidth || 500);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     isMounted.current = true;
@@ -112,11 +127,11 @@ export default function FunnelWidget() {
       });
 
       const first = sums[configs[0].col!] || 1;
-      const computed = configs.map((c, i) => {
+      const computed: FunnelStep[] = configs.map((c, i) => {
         const val = sums[c.col!] || 0;
         const prev = i > 0 ? (sums[configs[i - 1].col!] || 1) : first;
         return {
-          label: c.label, value: val,
+          label: c.label, value: val, color: c.color,
           pctOfFirst: first > 0 ? (val / first) * 100 : 0,
           pctOfPrev: prev > 0 ? (val / prev) * 100 : 0,
         };
@@ -138,11 +153,11 @@ export default function FunnelWidget() {
   const bg = isDark ? "#1f2130" : "#ffffff";
   const textPrimary = isDark ? "#d5d8df" : "#323338";
   const textMuted = isDark ? "#7c84a3" : "#676879";
-  const gridLine = isDark ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.06)";
+  const gridLine = isDark ? "rgba(255,255,255,0.07)" : "rgba(0,0,0,0.07)";
 
   if (phase === "init" || phase === "loading") {
     return (
-      <div style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div ref={containerRef} style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
         <div style={{ width: 24, height: 24, border: `3px solid ${textMuted}`, borderTop: "3px solid #579bfc", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
@@ -151,16 +166,8 @@ export default function FunnelWidget() {
 
   if (phase === "no-settings" || phase === "error") {
     return (
-      <div style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" as const, fontFamily: FONT }}>
-        <svg width="52" height="44" viewBox="0 0 52 44" style={{ marginBottom: 12, opacity: 0.4 }}>
-          <rect x="0" y="0" width="10" height="44" rx="2" fill="#ffcb00"/>
-          <rect x="14" y="8" width="10" height="36" rx="2" fill="#579bfc"/>
-          <rect x="28" y="18" width="10" height="26" rx="2" fill="#a358df"/>
-          <rect x="42" y="28" width="10" height="16" rx="2" fill="#00c875"/>
-        </svg>
-        <p style={{ color: textPrimary, fontSize: 14, fontWeight: 500, margin: "0 0 6px" }}>
-          {phase === "error" ? "Error al cargar" : "Configura el funnel"}
-        </p>
+      <div ref={containerRef} style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" as const, fontFamily: FONT }}>
+        <p style={{ color: textPrimary, fontSize: 14, fontWeight: 500, margin: "0 0 6px" }}>{phase === "error" ? "Error al cargar" : "Configura el funnel"}</p>
         <p style={{ color: textMuted, fontSize: 12, margin: "0 0 16px", maxWidth: 220, lineHeight: 1.5 }}>
           {phase === "error" ? error : "Selecciona al menos 2 columnas numéricas desde el panel de ajustes."}
         </p>
@@ -171,84 +178,137 @@ export default function FunnelWidget() {
     );
   }
 
-  const configs = getConfigs(settings);
-  const maxVal = steps[0]?.value || 1;
+  // Layout calculations
+  const n = steps.length;
+  const PAD = 16;
+  const SVG_W = containerW - PAD * 2;
   const CHART_H = 180;
+  const LABEL_H = 24;
+  const SVG_H = CHART_H + LABEL_H + 16;
+  const maxVal = steps[0]?.value || 1;
+
+  // Each step gets equal horizontal space
+  // Within each space: bar takes 55%, connector gap takes 45%
+  // So: barW = 0.55 * stepW, connW = 0.45 * stepW
+  const STEP_W = SVG_W / n;
+  const BAR_W = Math.max(Math.min(STEP_W * 0.55, 80), 20);
+  const CONN_W = STEP_W - BAR_W; // remaining space is connector
+
   const firstVal = steps[0]?.value || 0;
   const lastVal = steps[steps.length - 1]?.value || 0;
   const totalConversion = firstVal > 0 ? (lastVal / firstVal) * 100 : 0;
 
   return (
-    <div style={{ background: bg, width: "100%", height: "100%", fontFamily: FONT, padding: "16px 12px 12px", boxSizing: "border-box" as const }}>
-      {/* Chart */}
-      <div style={{ display: "flex", alignItems: "flex-end", height: CHART_H, marginBottom: 8, position: "relative" as const }}>
-        {/* Grid lines */}
-        {[0, 0.33, 0.66, 1].map((pct, i) => (
-          <div key={i} style={{ position: "absolute" as const, left: 0, right: 0, bottom: pct * CHART_H, borderTop: `1px solid ${gridLine}`, pointerEvents: "none" as const }} />
-        ))}
-
+    <div ref={containerRef} style={{ background: bg, width: "100%", height: "100%", fontFamily: FONT, padding: `12px ${PAD}px 10px`, boxSizing: "border-box" as const }}>
+      <svg
+        width={SVG_W}
+        height={SVG_H}
+        viewBox={`0 0 ${SVG_W} ${SVG_H}`}
+        style={{ display: "block", overflow: "visible" }}
+      >
         {steps.map((step, i) => {
-          const barH = maxVal > 0 ? Math.max((step.value / maxVal) * CHART_H, 4) : 4;
-          const isLast = i === steps.length - 1;
+          const barH = maxVal > 0 ? Math.max((step.value / maxVal) * CHART_H, 6) : 6;
+          const barBottom = CHART_H;
+          const barTop = barBottom - barH;
+
+          // Bar x center: each step occupies STEP_W, bar is in left part
+          const stepLeft = i * STEP_W;
+          const barLeft = stepLeft + CONN_W / 2; // center bar within step leaving conn space on right
+          const barCx = barLeft + BAR_W / 2;
+
+          // Next bar
           const nextStep = steps[i + 1];
-          const color = configs[i]?.color || COLORS[i] || "#579bfc";
+          const nextBarH = nextStep ? Math.max((nextStep.value / maxVal) * CHART_H, 6) : 0;
+          const nextBarTop = barBottom - nextBarH;
+          const nextStepLeft = (i + 1) * STEP_W;
+          const nextBarLeft = nextStepLeft + CONN_W / 2;
 
           return (
-            <div key={i} style={{ display: "flex", alignItems: "flex-end", flex: 1, position: "relative" as const, height: "100%" }}>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "flex-end", height: "100%", paddingRight: isLast ? 0 : 2 }}>
-                <span style={{ fontSize: 11, fontWeight: 600, color: textPrimary, marginBottom: 4, whiteSpace: "nowrap" as const }}>
-                  {fmtNum(step.value)}
-                </span>
-                {i > 0 && (
-                  <span style={{ position: "absolute" as const, top: CHART_H - barH - 20, left: -14, fontSize: 10, color: textMuted, whiteSpace: "nowrap" as const, zIndex: 2 }}>
-                    {fmtPct(step.pctOfPrev)}
-                  </span>
-                )}
-                <div style={{ width: "100%", height: barH, background: color, borderRadius: "3px 3px 0 0" }} />
-              </div>
-
-              {!isLast && nextStep && (
-                <div style={{ width: 16, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "flex-end", height: "100%", paddingBottom: Math.max((nextStep.value / maxVal) * CHART_H, 4) / 2, flexShrink: 0 }}>
-                  <svg width="12" height="12" viewBox="0 0 12 12">
-                    <path d="M2 4 L6 8 L10 4" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
-                </div>
+            <g key={i}>
+              {/* Connector polygon — from right edge of this bar to left edge of next */}
+              {nextStep && (
+                <polygon
+                  points={`
+                    ${barLeft + BAR_W},${barTop}
+                    ${nextBarLeft},${nextBarTop}
+                    ${nextBarLeft},${barBottom}
+                    ${barLeft + BAR_W},${barBottom}
+                  `}
+                  fill={step.color}
+                  opacity="0.2"
+                />
               )}
-            </div>
+
+              {/* Bar */}
+              <rect
+                x={barLeft}
+                y={barTop}
+                width={BAR_W}
+                height={barH}
+                fill={step.color}
+                rx="3"
+              />
+
+              {/* Value above bar */}
+              <text
+                x={barCx}
+                y={barTop - 6}
+                textAnchor="middle"
+                fill={textPrimary}
+                fontSize="11"
+                fontWeight="600"
+                fontFamily={FONT}
+              >
+                {fmtNum(step.value)}
+              </text>
+
+              {/* % conversion above connector */}
+              {nextStep && (
+                <text
+                  x={barLeft + BAR_W + CONN_W / 2}
+                  y={Math.min(barTop, nextBarTop) - 6}
+                  textAnchor="middle"
+                  fill={textMuted}
+                  fontSize="9"
+                  fontFamily={FONT}
+                >
+                  {fmtPct(steps[i + 1].pctOfPrev)}
+                </text>
+              )}
+
+              {/* Label below */}
+              <text
+                x={barCx}
+                y={barBottom + 16}
+                textAnchor="middle"
+                fill={textMuted}
+                fontSize="11"
+                fontFamily={FONT}
+              >
+                {step.label.length > 10 ? step.label.substring(0, 9) + "…" : step.label}
+              </text>
+            </g>
           );
         })}
-      </div>
 
-      {/* X labels */}
-      <div style={{ display: "flex", marginBottom: 12 }}>
-        {steps.map((step, i) => (
-          <div key={i} style={{ flex: 1, textAlign: "center" as const, fontSize: 11, color: textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, paddingRight: i < steps.length - 1 ? 16 : 0 }}>
-            {step.label}
-          </div>
-        ))}
-      </div>
-
-      {/* Divider */}
-      <div style={{ height: "0.5px", background: gridLine, marginBottom: 10 }} />
+        {/* Baseline */}
+        <line x1="0" y1={CHART_H} x2={SVG_W} y2={CHART_H} stroke={gridLine} strokeWidth="1" />
+      </svg>
 
       {/* Footer */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 8 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 6, marginTop: 6, paddingTop: 8, borderTop: `0.5px solid ${gridLine}` }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ fontSize: 11, color: textMuted }}>Conversión total:</span>
           <span style={{ fontSize: 13, fontWeight: 600, color: "#00c875" }}>{fmtPct(totalConversion)}</span>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-          {steps.map((step, i) => {
-            const color = configs[i]?.color || COLORS[i] || "#579bfc";
-            return (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", borderRadius: 4, padding: "2px 8px" }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: color, display: "inline-block" }} />
-                <span style={{ fontSize: 10, color: textMuted }}>{step.label}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color }}>{fmtNum(step.value)}</span>
-                {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
-              </div>
-            );
-          })}
+          {steps.map((step, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 3, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", borderRadius: 4, padding: "2px 7px" }}>
+              <span style={{ width: 7, height: 7, borderRadius: 2, background: step.color, display: "inline-block" }} />
+              <span style={{ fontSize: 11, fontWeight: 600, color: step.color }}>{fmtNum(step.value)}</span>
+              {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
+            </div>
+          ))}
         </div>
       </div>
     </div>
