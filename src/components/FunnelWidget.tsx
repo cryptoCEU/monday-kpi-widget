@@ -182,9 +182,10 @@ export default function FunnelWidget() {
   const n = steps.length;
   const PAD = 16;
   const SVG_W = containerW - PAD * 2;
-  const CHART_H = 180;
-  const LABEL_H = 24;
-  const SVG_H = CHART_H + LABEL_H + 16;
+  const CHART_H = 160;
+  const LABEL_H = 28;
+  const TOP_PAD = 28;
+  const SVG_H = TOP_PAD + CHART_H + LABEL_H + 8;
   const maxVal = steps[0]?.value || 1;
 
   // Each step gets equal horizontal space
@@ -208,7 +209,7 @@ export default function FunnelWidget() {
       >
         {steps.map((step, i) => {
           const barH = maxVal > 0 ? Math.max((step.value / maxVal) * CHART_H, 6) : 6;
-          const barBottom = CHART_H;
+          const barBottom = TOP_PAD + CHART_H;
           const barTop = barBottom - barH;
 
           // Bar x center: each step occupies STEP_W, bar is in left part
@@ -292,23 +293,25 @@ export default function FunnelWidget() {
         })}
 
         {/* Baseline */}
-        <line x1="0" y1={CHART_H} x2={SVG_W} y2={CHART_H} stroke={gridLine} strokeWidth="1" />
+        <line x1="0" y1={TOP_PAD + CHART_H} x2={SVG_W} y2={TOP_PAD + CHART_H} stroke={gridLine} strokeWidth="1" />
       </svg>
 
       {/* Footer */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 6, marginTop: 6, paddingTop: 8, borderTop: `0.5px solid ${gridLine}` }}>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
           <span style={{ fontSize: 11, color: textMuted }}>Conversión total:</span>
-          <span style={{ fontSize: 13, fontWeight: 600, color: "#00c875" }}>{fmtPct(totalConversion)}</span>
         </div>
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-          {steps.map((step, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 3, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", borderRadius: 4, padding: "2px 7px" }}>
-              <span style={{ width: 7, height: 7, borderRadius: 2, background: step.color, display: "inline-block" }} />
-              <span style={{ fontSize: 11, fontWeight: 600, color: step.color }}>{fmtNum(step.value)}</span>
-              {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
-            </div>
-          ))}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const }}>
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+            {steps.map((step, i) => (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 3, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", borderRadius: 4, padding: "2px 7px" }}>
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: step.color, display: "inline-block" }} />
+                <span style={{ fontSize: 11, fontWeight: 600, color: step.color }}>{fmtNum(step.value)}</span>
+                {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
+              </div>
+            ))}
+          </div>
+          <span style={{ fontSize: 20, fontWeight: 600, color: "#00c875", letterSpacing: "-0.01em" }}>{fmtPct(totalConversion)}</span>
         </div>
       </div>
     </div>
