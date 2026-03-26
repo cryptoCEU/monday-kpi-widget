@@ -18,8 +18,8 @@ interface FunnelStep {
   pctOfPrev: number;
 }
 
-const BAR_COLOR = "#4d90fe";
-const BAR_COLOR_DIM = "#2d5fa8";
+// Yellow, Blue, Purple as requested + extras
+const COLORS = ["#ffcb00", "#579bfc", "#a358df", "#00c875", "#e2445c", "#ff642e"];
 
 function extractColId(val: any): string | null {
   if (!val) return null;
@@ -63,15 +63,13 @@ export default function FunnelWidget() {
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
-        const t = d?.theme || "dark";
-        setIsDark(t === "dark" || t === "black");
+        setIsDark((d?.theme || "dark") === "dark" || d?.theme === "black");
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
-        const t = res?.data?.theme || "dark";
-        setIsDark(t === "dark" || t === "black");
+        setIsDark((res?.data?.theme || "dark") === "dark" || res?.data?.theme === "black");
       });
       sdk.get("settings").then((res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
       sdk.listen("settings", (res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
@@ -80,9 +78,10 @@ export default function FunnelWidget() {
   }, []);
 
   const getConfigs = useCallback((s: Settings) =>
-    [1, 2, 3, 4, 5, 6].map((n) => ({
+    [1, 2, 3, 4, 5, 6].map((n, i) => ({
       col: extractColId((s as any)[`step${n}_col`]),
       label: ((s as any)[`step${n}_label`] as string) || `Paso ${n}`,
+      color: COLORS[i],
     })).filter((x) => !!x.col), []);
 
   const fetchAndBuild = useCallback(async (sdk: any, bid: string, cfg: Settings) => {
@@ -144,7 +143,7 @@ export default function FunnelWidget() {
   if (phase === "init" || phase === "loading") {
     return (
       <div style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 24, height: 24, border: `3px solid ${textMuted}`, borderTop: `3px solid ${BAR_COLOR}`, borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+        <div style={{ width: 24, height: 24, border: `3px solid ${textMuted}`, borderTop: "3px solid #579bfc", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
         <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
       </div>
     );
@@ -154,10 +153,10 @@ export default function FunnelWidget() {
     return (
       <div style={{ background: bg, width: "100%", height: "100%", minHeight: 200, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "center", padding: 24, textAlign: "center" as const, fontFamily: FONT }}>
         <svg width="52" height="44" viewBox="0 0 52 44" style={{ marginBottom: 12, opacity: 0.4 }}>
-          <rect x="0" y="0" width="10" height="44" rx="2" fill={BAR_COLOR}/>
-          <rect x="14" y="8" width="10" height="36" rx="2" fill={BAR_COLOR}/>
-          <rect x="28" y="18" width="10" height="26" rx="2" fill={BAR_COLOR}/>
-          <rect x="42" y="28" width="10" height="16" rx="2" fill={BAR_COLOR}/>
+          <rect x="0" y="0" width="10" height="44" rx="2" fill="#ffcb00"/>
+          <rect x="14" y="8" width="10" height="36" rx="2" fill="#579bfc"/>
+          <rect x="28" y="18" width="10" height="26" rx="2" fill="#a358df"/>
+          <rect x="42" y="28" width="10" height="16" rx="2" fill="#00c875"/>
         </svg>
         <p style={{ color: textPrimary, fontSize: 14, fontWeight: 500, margin: "0 0 6px" }}>
           {phase === "error" ? "Error al cargar" : "Configura el funnel"}
@@ -172,6 +171,7 @@ export default function FunnelWidget() {
     );
   }
 
+  const configs = getConfigs(settings);
   const maxVal = steps[0]?.value || 1;
   const CHART_H = 180;
   const firstVal = steps[0]?.value || 0;
@@ -180,69 +180,37 @@ export default function FunnelWidget() {
 
   return (
     <div style={{ background: bg, width: "100%", height: "100%", fontFamily: FONT, padding: "16px 12px 12px", boxSizing: "border-box" as const }}>
-      {/* Chart area */}
+      {/* Chart */}
       <div style={{ display: "flex", alignItems: "flex-end", height: CHART_H, marginBottom: 8, position: "relative" as const }}>
-        {/* Y axis grid lines */}
+        {/* Grid lines */}
         {[0, 0.33, 0.66, 1].map((pct, i) => (
-          <div key={i} style={{
-            position: "absolute" as const,
-            left: 0, right: 0,
-            bottom: pct * CHART_H,
-            borderTop: `1px solid ${gridLine}`,
-            pointerEvents: "none" as const,
-          }} />
+          <div key={i} style={{ position: "absolute" as const, left: 0, right: 0, bottom: pct * CHART_H, borderTop: `1px solid ${gridLine}`, pointerEvents: "none" as const }} />
         ))}
 
-        {/* Bars + arrows */}
         {steps.map((step, i) => {
           const barH = maxVal > 0 ? Math.max((step.value / maxVal) * CHART_H, 4) : 4;
           const isLast = i === steps.length - 1;
           const nextStep = steps[i + 1];
+          const color = configs[i]?.color || COLORS[i] || "#579bfc";
 
           return (
             <div key={i} style={{ display: "flex", alignItems: "flex-end", flex: 1, position: "relative" as const, height: "100%" }}>
               <div style={{ flex: 1, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "flex-end", height: "100%", paddingRight: isLast ? 0 : 2 }}>
-                {/* Value on top */}
                 <span style={{ fontSize: 11, fontWeight: 600, color: textPrimary, marginBottom: 4, whiteSpace: "nowrap" as const }}>
                   {fmtNum(step.value)}
                 </span>
-                {/* % of previous */}
                 {i > 0 && (
-                  <span style={{
-                    position: "absolute" as const,
-                    top: CHART_H - barH - 20,
-                    left: -14,
-                    fontSize: 10,
-                    color: textMuted,
-                    whiteSpace: "nowrap" as const,
-                    zIndex: 2,
-                  }}>
+                  <span style={{ position: "absolute" as const, top: CHART_H - barH - 20, left: -14, fontSize: 10, color: textMuted, whiteSpace: "nowrap" as const, zIndex: 2 }}>
                     {fmtPct(step.pctOfPrev)}
                   </span>
                 )}
-                {/* Bar */}
-                <div style={{
-                  width: "100%",
-                  height: barH,
-                  background: `linear-gradient(to bottom, ${BAR_COLOR}, ${BAR_COLOR_DIM})`,
-                  borderRadius: "3px 3px 0 0",
-                }} />
+                <div style={{ width: "100%", height: barH, background: color, borderRadius: "3px 3px 0 0" }} />
               </div>
 
-              {/* Arrow between bars */}
               {!isLast && nextStep && (
-                <div style={{
-                  width: 16,
-                  display: "flex",
-                  flexDirection: "column" as const,
-                  alignItems: "center",
-                  justifyContent: "flex-end",
-                  height: "100%",
-                  paddingBottom: Math.max((nextStep.value / maxVal) * CHART_H, 4) / 2,
-                  flexShrink: 0,
-                }}>
+                <div style={{ width: 16, display: "flex", flexDirection: "column" as const, alignItems: "center", justifyContent: "flex-end", height: "100%", paddingBottom: Math.max((nextStep.value / maxVal) * CHART_H, 4) / 2, flexShrink: 0 }}>
                   <svg width="12" height="12" viewBox="0 0 12 12">
-                    <path d="M2 4 L6 8 L10 4" stroke={BAR_COLOR} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+                    <path d="M2 4 L6 8 L10 4" stroke={color} strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
                   </svg>
                 </div>
               )}
@@ -251,19 +219,10 @@ export default function FunnelWidget() {
         })}
       </div>
 
-      {/* X axis labels */}
+      {/* X labels */}
       <div style={{ display: "flex", marginBottom: 12 }}>
         {steps.map((step, i) => (
-          <div key={i} style={{
-            flex: 1,
-            textAlign: "center" as const,
-            fontSize: 11,
-            color: textMuted,
-            overflow: "hidden",
-            textOverflow: "ellipsis",
-            whiteSpace: "nowrap" as const,
-            paddingRight: i < steps.length - 1 ? 16 : 0,
-          }}>
+          <div key={i} style={{ flex: 1, textAlign: "center" as const, fontSize: 11, color: textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const, paddingRight: i < steps.length - 1 ? 16 : 0 }}>
             {step.label}
           </div>
         ))}
@@ -279,17 +238,17 @@ export default function FunnelWidget() {
           <span style={{ fontSize: 13, fontWeight: 600, color: "#00c875" }}>{fmtPct(totalConversion)}</span>
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
-          {steps.map((step, i) => (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: 4,
-              background: isDark ? "rgba(77,144,254,0.12)" : "rgba(77,144,254,0.08)",
-              borderRadius: 4, padding: "2px 8px",
-            }}>
-              <span style={{ fontSize: 10, color: textMuted }}>{step.label}</span>
-              <span style={{ fontSize: 11, fontWeight: 600, color: BAR_COLOR }}>{fmtNum(step.value)}</span>
-              {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
-            </div>
-          ))}
+          {steps.map((step, i) => {
+            const color = configs[i]?.color || COLORS[i] || "#579bfc";
+            return (
+              <div key={i} style={{ display: "flex", alignItems: "center", gap: 4, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", borderRadius: 4, padding: "2px 8px" }}>
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: color, display: "inline-block" }} />
+                <span style={{ fontSize: 10, color: textMuted }}>{step.label}</span>
+                <span style={{ fontSize: 11, fontWeight: 600, color }}>{fmtNum(step.value)}</span>
+                {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
