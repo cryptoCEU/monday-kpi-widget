@@ -290,7 +290,7 @@ export default function CplEvolutionWidget() {
         titleFont: { family: FONT, size: 12 },
         bodyFont: { family: FONT, size: 11 },
         callbacks: {
-          label: (ctx) => ` ${ctx.dataset.label}: ${fmt(ctx.raw as number)}`,
+          label: (ctx: any) => ` ${ctx.dataset.label}: ${fmt(ctx.raw as number)}`,
         },
       },
     },
