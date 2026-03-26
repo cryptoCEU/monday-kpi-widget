@@ -8,6 +8,7 @@ interface Settings {
   suffix?: string;
   decimals?: string;
   unit?: any;
+  multiplyBy100?: any;
 }
 
 function extractColId(val: any): string | null {
@@ -33,6 +34,15 @@ function extractSuffix(settings: Settings): string {
     return settings.unit.custom_unit || settings.unit.symbol || "";
   }
   return "";
+}
+
+function extractBool(val: any): boolean {
+  if (!val) return false;
+  if (val === true || val === "true" || val === 1 || val === "1") return true;
+  if (typeof val === "object") {
+    return Object.values(val).some((v) => v === true || v === "true" || v === 1 || v === "1");
+  }
+  return false;
 }
 
 export default function DivisionWidget() {
@@ -123,15 +133,21 @@ export default function DivisionWidget() {
 
   const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = extractSuffix(settings);
-  const multiplyBy100 = settings.multiplyBy100 === true || settings.multiplyBy100 === "true" || settings.multiplyBy100 === 1 || settings.multiplyBy100 === "1" || (typeof settings.multiplyBy100 === "object" && settings.multiplyBy100 !== null && Object.values(settings.multiplyBy100).some((v) => v === true || v === "true" || v === 1));
+  const multiplyBy100 = extractBool(settings.multiplyBy100);
   const displayValue = result !== null ? (multiplyBy100 ? result * 100 : result) : null;
   const formatted = displayValue !== null ? displayValue.toFixed(decimals) : null;
 
-  // Monday color tokens — Figtree weight 300 on dark bg is #d5d8df, on light is #323338
   const color = isDark ? "#d5d8df" : "#323338";
   const muted = isDark ? "#6b6f7d" : "#676879";
-
   const FONT = "'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+
+  const root: React.CSSProperties = {
+    width: "100%", height: "100%", minHeight: 100,
+    display: "flex", flexDirection: "column",
+    alignItems: "center", justifyContent: "center",
+    fontFamily: FONT, background: "transparent",
+    padding: "8px 12px", boxSizing: "border-box",
+  };
 
   const numStyle: React.CSSProperties = {
     fontFamily: FONT,
@@ -141,15 +157,6 @@ export default function DivisionWidget() {
     letterSpacing: "-0.02em",
     lineHeight: 1,
     fontVariantNumeric: "tabular-nums",
-  };
-
-  const root: React.CSSProperties = {
-    width: "100%", height: "100%", minHeight: 100,
-    display: "flex", flexDirection: "column",
-    alignItems: "center", justifyContent: "center",
-    fontFamily: FONT,
-    background: "transparent",
-    padding: "8px 12px", boxSizing: "border-box",
   };
 
   if (phase === "init" || phase === "loading") {
@@ -163,9 +170,7 @@ export default function DivisionWidget() {
   if (phase === "no-settings") {
     return (
       <div style={root}>
-        <p style={{ fontFamily: FONT, fontSize: 13, color: muted, margin: "0 0 10px", textAlign: "center" }}>
-          Configura el widget
-        </p>
+        <p style={{ fontFamily: FONT, fontSize: 13, color: muted, margin: "0 0 10px", textAlign: "center" }}>Configura el widget</p>
         <button onClick={openSettings} style={{ fontFamily: FONT, padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}>
           Ajustes
         </button>
@@ -174,7 +179,7 @@ export default function DivisionWidget() {
   }
 
   if (phase === "error") {
-    return <div style={root}><p style={{ fontFamily: FONT, color: "#e2445c", fontSize: 13 }}>Error al cargar</p></div>;
+    return <div style={root}><p style={{ color: "#e2445c", fontSize: 13 }}>Error al cargar</p></div>;
   }
 
   return (
@@ -183,10 +188,6 @@ export default function DivisionWidget() {
         <span style={numStyle}>{formatted}</span>
         {suffix && <span style={numStyle}>{suffix}</span>}
       </div>
-      {/* DEBUG — remove after fix */}
-      <p style={{ fontFamily: FONT, fontSize: 9, color: muted, marginTop: 4 }}>
-        x100: {JSON.stringify(settings.multiplyBy100)} → {String(multiplyBy100)}
-      </p>
     </div>
   );
 }
