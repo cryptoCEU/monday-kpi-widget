@@ -250,7 +250,7 @@ export default function CplEvolutionWidget() {
     tension: 0,
   }));
 
-  const chartData: ChartData<"bar"> = {
+  const chartData: any = {
     labels: data.map((d) => d.label),
     datasets: [
       {
@@ -264,7 +264,7 @@ export default function CplEvolutionWidget() {
     ],
   };
 
-  const chartOptions: ChartOptions<"bar"> = {
+  const chartOptions: any = {
     responsive: true,
     maintainAspectRatio: false,
     interaction: { mode: "index", intersect: false },
