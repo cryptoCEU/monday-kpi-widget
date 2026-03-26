@@ -298,11 +298,11 @@ export default function FunnelWidget() {
 
       {/* Footer */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 6, marginTop: 6, paddingTop: 8, borderTop: `0.5px solid ${gridLine}` }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ fontSize: 11, color: textMuted }}>Conversión total:</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, color: textMuted }}>Conversión total:</span>
+          <span style={{ fontSize: 18, fontWeight: 600, color: "#00c875", letterSpacing: "-0.01em" }}>{fmtPct(totalConversion)}</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" as const }}>
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" as const }}>
             {steps.map((step, i) => (
               <div key={i} style={{ display: "flex", alignItems: "center", gap: 3, background: isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.04)", borderRadius: 4, padding: "2px 7px" }}>
                 <span style={{ width: 7, height: 7, borderRadius: 2, background: step.color, display: "inline-block" }} />
@@ -310,8 +310,6 @@ export default function FunnelWidget() {
                 {i > 0 && <span style={{ fontSize: 10, color: textMuted }}>({fmtPct(step.pctOfPrev)})</span>}
               </div>
             ))}
-          </div>
-          <span style={{ fontSize: 20, fontWeight: 600, color: "#00c875", letterSpacing: "-0.01em" }}>{fmtPct(totalConversion)}</span>
         </div>
       </div>
     </div>
