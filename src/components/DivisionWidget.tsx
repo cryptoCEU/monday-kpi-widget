@@ -43,7 +43,6 @@ export default function DivisionWidget() {
   const [result, setResult] = useState<number | null>(null);
   const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
   const [isDark, setIsDark] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -55,15 +54,30 @@ export default function DivisionWidget() {
         if (!isMounted.current) return;
         const d = res?.data;
         setIsDark((d?.theme || "light") === "dark" || d?.theme === "black");
-        setIsExporting(!!d?.isExporting);
+
+        // If Monday is exporting to PDF, redirect to static server-side render
+        if (d?.isExporting) {
+          const s = d?.settings || {};
+          const colA = extractColId(s?.colA);
+          const colB = extractColId(s?.colB);
+          const bid = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || "";
+          if (colA && colB && bid) {
+            const suffix = extractSuffix(s);
+            const decimals = Math.min(Math.max(parseInt(s?.decimals || "2", 10), 0), 4);
+            const multiply = extractBool(s?.multiplyBy100);
+            const dark = (d?.theme || "light") === "dark" || d?.theme === "black";
+            const params = new URLSearchParams({ boardId: bid, colA, colB, suffix, decimals: decimals.toString(), multiply: multiply ? "1" : "0", dark: dark ? "1" : "0" });
+            window.location.href = `/api/division-static?${params}`;
+            return;
+          }
+        }
+
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
-        const d = res?.data;
-        setIsDark((d?.theme || "light") === "dark" || d?.theme === "black");
-        setIsExporting(!!d?.isExporting);
+        setIsDark((res?.data?.theme || "light") === "dark" || res?.data?.theme === "black");
       });
       sdk.get("settings").then((res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
       sdk.listen("settings", (res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
@@ -135,31 +149,9 @@ export default function DivisionWidget() {
     fontVariantNumeric: "tabular-nums",
   };
 
-  // PDF export: redirect to server-side static render
-  if (isExporting && boardId) {
-    const colA = extractColId(settings.colA);
-    const colB = extractColId(settings.colB);
-    if (colA && colB) {
-      const params = new URLSearchParams({
-        boardId, colA, colB, suffix,
-        decimals: decimals.toString(),
-        multiply: multiplyBy100 ? "1" : "0",
-        dark: isDark ? "1" : "0",
-      });
-      return (
-        <iframe
-          src={`/api/division-static?${params}`}
-          style={{ width: "100%", height: "100%", border: "none" }}
-          title="División"
-        />
-      );
-    }
-  }
-
   if (phase === "init" || phase === "loading") {
     return <div style={root}><span style={{ ...numStyle, opacity: 0.2 }}>—</span></div>;
   }
-
   if (phase === "no-settings") {
     return (
       <div style={root}>
@@ -168,7 +160,6 @@ export default function DivisionWidget() {
       </div>
     );
   }
-
   if (phase === "error") {
     return <div style={root}><p style={{ color: "#e2445c", fontSize: 13 }}>Error al cargar</p></div>;
   }
