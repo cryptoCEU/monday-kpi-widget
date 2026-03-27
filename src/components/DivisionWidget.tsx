@@ -16,32 +16,26 @@ function extractColId(val: any): string | null {
   if (typeof val === "string") return val || null;
   if (val.id) return val.id;
   if (val.value) return val.value;
-  for (const boardId of Object.keys(val)) {
-    const cols = val[boardId];
-    if (Array.isArray(cols) && cols.length > 0) return cols[0];
-    if (typeof cols === "object" && cols !== null) {
-      for (const colId of Object.keys(cols)) {
-        if (cols[colId] === true) return colId;
-      }
+  for (const k of Object.keys(val)) {
+    const v = val[k];
+    if (Array.isArray(v) && v.length > 0) return v[0];
+    if (typeof v === "object" && v !== null) {
+      for (const c of Object.keys(v)) { if (v[c] === true) return c; }
     }
   }
   return null;
 }
 
-function extractSuffix(settings: Settings): string {
-  if (settings.suffix) return settings.suffix;
-  if (settings.unit && typeof settings.unit === "object") {
-    return settings.unit.custom_unit || settings.unit.symbol || "";
-  }
+function extractSuffix(s: Settings): string {
+  if (s.suffix) return s.suffix;
+  if (s.unit && typeof s.unit === "object") return s.unit.custom_unit || s.unit.symbol || "";
   return "";
 }
 
 function extractBool(val: any): boolean {
   if (!val) return false;
   if (val === true || val === "true" || val === 1 || val === "1") return true;
-  if (typeof val === "object") {
-    return Object.values(val).some((v) => v === true || v === "true" || v === 1 || v === "1");
-  }
+  if (typeof val === "object") return Object.values(val).some((v) => v === true || v === "true" || v === 1);
   return false;
 }
 
@@ -52,6 +46,7 @@ export default function DivisionWidget() {
   const [result, setResult] = useState<number | null>(null);
   const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
   const [isDark, setIsDark] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const isMounted = useRef(true);
 
   useEffect(() => {
@@ -63,27 +58,21 @@ export default function DivisionWidget() {
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
-        const t = d?.theme || "light";
-        setIsDark(t === "dark" || t === "black");
+        setIsDark((d?.theme || "light") === "dark" || d?.theme === "black");
+        setIsExporting(!!d?.isExporting);
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
 
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
-        const t = res?.data?.theme || "light";
-        setIsDark(t === "dark" || t === "black");
+        const d = res?.data;
+        setIsDark((d?.theme || "light") === "dark" || d?.theme === "black");
+        setIsExporting(!!d?.isExporting);
       });
 
-      sdk.get("settings").then((res: any) => {
-        if (!isMounted.current) return;
-        setSettings(res?.data || {});
-      });
-
-      sdk.listen("settings", (res: any) => {
-        if (!isMounted.current) return;
-        setSettings(res?.data || {});
-      });
+      sdk.get("settings").then((res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
+      sdk.listen("settings", (res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
     });
     return () => { isMounted.current = false; };
   }, []);
@@ -92,7 +81,6 @@ export default function DivisionWidget() {
     const colA = extractColId(cfg.colA);
     const colB = extractColId(cfg.colB);
     if (!colA || !colB) { setPhase("no-settings"); return; }
-
     setPhase("loading");
     try {
       const colIds = `"${colA}", "${colB}"`;
@@ -159,12 +147,24 @@ export default function DivisionWidget() {
     fontVariantNumeric: "tabular-nums",
   };
 
-  if (phase === "init" || phase === "loading") {
+  // PDF export mode — render static immediately without SDK wait
+  if (isExporting) {
     return (
-      <div style={root}>
-        <span style={{ ...numStyle, opacity: 0.2 }}>—</span>
+      <div style={{ ...root, background: isDark ? "#1f2130" : "#ffffff" }}>
+        {formatted ? (
+          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
+            <span style={numStyle}>{formatted}</span>
+            {suffix && <span style={numStyle}>{suffix}</span>}
+          </div>
+        ) : (
+          <span style={{ ...numStyle, opacity: 0.4 }}>—</span>
+        )}
       </div>
     );
+  }
+
+  if (phase === "init" || phase === "loading") {
+    return <div style={root}><span style={{ ...numStyle, opacity: 0.2 }}>—</span></div>;
   }
 
   if (phase === "no-settings") {
