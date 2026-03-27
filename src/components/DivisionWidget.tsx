@@ -3,12 +3,9 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 
 interface Settings {
-  colA?: any;
-  colB?: any;
-  suffix?: string;
-  decimals?: string;
-  unit?: any;
-  multiplyBy100?: any;
+  colA?: any; colB?: any;
+  suffix?: string; decimals?: string;
+  unit?: any; multiplyBy100?: any;
 }
 
 function extractColId(val: any): string | null {
@@ -54,7 +51,6 @@ export default function DivisionWidget() {
     import("monday-sdk-js").then((mod) => {
       const sdk = (mod.default as any)();
       setMonday(sdk);
-
       sdk.get("context").then((res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
@@ -63,14 +59,12 @@ export default function DivisionWidget() {
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
-
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
         const d = res?.data;
         setIsDark((d?.theme || "light") === "dark" || d?.theme === "black");
         setIsExporting(!!d?.isExporting);
       });
-
       sdk.get("settings").then((res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
       sdk.listen("settings", (res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
     });
@@ -108,9 +102,7 @@ export default function DivisionWidget() {
 
       const res = sumB > 0 ? sumA / sumB : 0;
       if (isMounted.current) { setResult(res); setPhase("ready"); }
-    } catch {
-      if (isMounted.current) setPhase("error");
-    }
+    } catch { if (isMounted.current) setPhase("error"); }
   }, []);
 
   useEffect(() => {
@@ -118,13 +110,11 @@ export default function DivisionWidget() {
   }, [monday, boardId, settings, fetchAndCalc]);
 
   const openSettings = () => { if (monday) monday.execute("openSettings"); };
-
   const decimals = Math.min(Math.max(parseInt(settings.decimals || "2", 10), 0), 4);
   const suffix = extractSuffix(settings);
   const multiplyBy100 = extractBool(settings.multiplyBy100);
   const displayValue = result !== null ? (multiplyBy100 ? result * 100 : result) : null;
   const formatted = displayValue !== null ? displayValue.toFixed(decimals) : null;
-
   const color = isDark ? "#d5d8df" : "#323338";
   const muted = isDark ? "#6b6f7d" : "#676879";
   const FONT = "'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
@@ -140,27 +130,30 @@ export default function DivisionWidget() {
   const numStyle: React.CSSProperties = {
     fontFamily: FONT,
     fontSize: "clamp(40px, 10vw, 72px)",
-    fontWeight: 300,
-    color,
-    letterSpacing: "-0.02em",
-    lineHeight: 1,
+    fontWeight: 300, color,
+    letterSpacing: "-0.02em", lineHeight: 1,
     fontVariantNumeric: "tabular-nums",
   };
 
-  // PDF export mode — render static immediately without SDK wait
-  if (isExporting) {
-    return (
-      <div style={{ ...root, background: isDark ? "#1f2130" : "#ffffff" }}>
-        {formatted ? (
-          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
-            <span style={numStyle}>{formatted}</span>
-            {suffix && <span style={numStyle}>{suffix}</span>}
-          </div>
-        ) : (
-          <span style={{ ...numStyle, opacity: 0.4 }}>—</span>
-        )}
-      </div>
-    );
+  // PDF export: redirect to server-side static render
+  if (isExporting && boardId) {
+    const colA = extractColId(settings.colA);
+    const colB = extractColId(settings.colB);
+    if (colA && colB) {
+      const params = new URLSearchParams({
+        boardId, colA, colB, suffix,
+        decimals: decimals.toString(),
+        multiply: multiplyBy100 ? "1" : "0",
+        dark: isDark ? "1" : "0",
+      });
+      return (
+        <iframe
+          src={`/api/division-static?${params}`}
+          style={{ width: "100%", height: "100%", border: "none" }}
+          title="División"
+        />
+      );
+    }
   }
 
   if (phase === "init" || phase === "loading") {
@@ -171,9 +164,7 @@ export default function DivisionWidget() {
     return (
       <div style={root}>
         <p style={{ fontFamily: FONT, fontSize: 13, color: muted, margin: "0 0 10px", textAlign: "center" }}>Configura el widget</p>
-        <button onClick={openSettings} style={{ fontFamily: FONT, padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}>
-          Ajustes
-        </button>
+        <button onClick={openSettings} style={{ fontFamily: FONT, padding: "5px 14px", background: "#0073ea", color: "#fff", border: "none", borderRadius: 4, cursor: "pointer", fontSize: 12 }}>Ajustes</button>
       </div>
     );
   }
