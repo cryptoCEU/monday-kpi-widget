@@ -53,6 +53,7 @@ export default function CplEvolutionWidget() {
   const [phase, setPhase] = useState<"init" | "no-settings" | "loading" | "ready" | "error">("init");
   const [error, setError] = useState("");
   const [isDark, setIsDark] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<any>(null);
   const isMounted = useRef(true);
@@ -66,12 +67,15 @@ export default function CplEvolutionWidget() {
         if (!isMounted.current) return;
         const d = res?.data;
         setIsDark((d?.theme || "dark") === "dark" || d?.theme === "black");
+        setIsExporting(!!d?.isExporting);
         const id = d?.boardId?.toString() || d?.boardIds?.[0]?.toString() || d?.connectedBoards?.[0]?.boardId?.toString() || null;
         setBoardId(id);
       });
       sdk.listen("context", (res: any) => {
         if (!isMounted.current) return;
-        setIsDark((res?.data?.theme || "dark") === "dark" || res?.data?.theme === "black");
+        const d = res?.data;
+        setIsDark((d?.theme || "dark") === "dark" || d?.theme === "black");
+        setIsExporting(!!d?.isExporting);
       });
       sdk.get("settings").then((res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
       sdk.listen("settings", (res: any) => { if (isMounted.current) setSettings(res?.data || {}); });
@@ -235,7 +239,7 @@ export default function CplEvolutionWidget() {
     });
 
     return () => { if (chartRef.current) { chartRef.current.destroy(); chartRef.current = null; } };
-  }, [phase, data, settings, isDark]);
+  }, [phase, data, settings, isDark, isExporting]);
 
   const openSettings = () => { if (monday) monday.execute("openSettings"); };
   const FONT = "'Figtree', -apple-system, sans-serif";
@@ -246,8 +250,12 @@ export default function CplEvolutionWidget() {
   if (phase === "init" || phase === "loading") {
     return (
       <div style={{ background: bg, width: "100%", height: "100%", minHeight: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <div style={{ width: 24, height: 24, border: `3px solid ${textMuted}`, borderTop: "3px solid #4d90fe", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        {!isExporting && (
+          <>
+            <div style={{ width: 24, height: 24, border: `3px solid ${textMuted}`, borderTop: "3px solid #4d90fe", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+          </>
+        )}
       </div>
     );
   }
